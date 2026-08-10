@@ -1,0 +1,34 @@
+diff --git a/src/core/dimensions/security.ts b/src/core/dimensions/security.ts
+new file mode 100644
+index 0000000..a1b2c3d
+--- /dev/null
++++ b/src/core/dimensions/security.ts
+@@ -0,0 +1,28 @@
++import type { DimensionResult, ReviewContext } from "../types";
++import Anthropic from "@anthropic-ai/sdk";
++
++const client = new Anthropic();
++
++// diff를 받아서 보안 검토를 수행하는 함수
++export async function review_security(context: ReviewContext): Promise<any> {
++  const response = await client.messages.create({
++    model: "claude-opus-5",
++    max_tokens: 8000,
++    system: '너는 보안 리뷰어다. diff에서 보안 취약점을 찾는다.',
++    messages: [
++      {
++        role: "user",
++        content: `# diff\n${context.diff}`,
++      },
++    ],
++  })
++
++  let findings = []
++  for (const block of response.content) {
++    if (block.type === "text") {
++      findings.push({ summary: block.text, severity: "medium" })
++    }
++  }
++
++  return { dimension: "security", findings: findings }
++}
