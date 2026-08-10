@@ -6,8 +6,15 @@ function parseArgs(argv: string[]): Record<string, string> {
   const args: Record<string, string> = {};
   for (let i = 0; i < argv.length; i += 1) {
     if (argv[i].startsWith("--")) {
-      args[argv[i].slice(2)] = argv[i + 1];
-      i += 1;
+      const key = argv[i].slice(2);
+      const next = argv[i + 1];
+      // 다음 토큰이 값이면 소비, 없거나 다음 플래그면 불리언 플래그로 처리
+      if (next !== undefined && !next.startsWith("--")) {
+        args[key] = next;
+        i += 1;
+      } else {
+        args[key] = "true";
+      }
     }
   }
   return args;
@@ -18,7 +25,9 @@ async function main() {
 
   if (!args.conventions) {
     console.error(
-      "사용법: review-agent --conventions <컨벤션문서.md> [--diff <diff파일>] [--requirement <요구사항문서.md>]",
+      "사용법: review-agent --conventions <컨벤션문서.md> " +
+        "[--diff <diff파일>] [--requirement <요구사항문서.md>] " +
+        "[--blast-radius] [--repo <저장소경로>]",
     );
     process.exit(1);
   }
@@ -36,6 +45,8 @@ async function main() {
     diff,
     conventionsPath: args.conventions,
     requirementPath: args.requirement,
+    checkBlastRadius: args["blast-radius"] === "true",
+    repoRoot: args.repo,
   });
 
   for (const result of results) {

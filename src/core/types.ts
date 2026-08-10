@@ -5,6 +5,10 @@ export interface ReviewContext {
   conventionsPath: string;
   /** path to a text/markdown file describing the requirement this diff should satisfy */
   requirementPath?: string;
+  /** blast-radius(타 영향) dimension 실행 여부 — 기본 off (도구 호출이 들어가 비용이 더 큼) */
+  checkBlastRadius?: boolean;
+  /** blast-radius 검색 대상 저장소 루트. 생략 시 현재 작업 디렉토리 */
+  repoRoot?: string;
 }
 
 export type Severity = "high" | "medium" | "low";
