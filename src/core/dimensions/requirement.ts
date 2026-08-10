@@ -1,6 +1,7 @@
 import Anthropic from "@anthropic-ai/sdk";
 import { zodOutputFormat } from "@anthropic-ai/sdk/helpers/zod";
 import { z } from "zod";
+import { withPolicy } from "../policy";
 import type { DimensionResult, PromptPreview, ReviewContext } from "../types";
 
 const FindingsSchema = z.object({
@@ -25,7 +26,10 @@ const SYSTEM_PROMPT =
   "모두 충족되면 빈 배열을 반환한다.";
 
 function buildUserPrompt(context: ReviewContext, requirementText: string): string {
-  return `# 요구사항\n${requirementText}\n\n# 구현된 diff\n${context.diff}`;
+  return withPolicy(
+    `# 요구사항\n${requirementText}\n\n# 구현된 diff\n${context.diff}`,
+    context.policyText,
+  );
 }
 
 export function previewRequirementPrompt(

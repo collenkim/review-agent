@@ -7,6 +7,7 @@ const PlanSchema = z.object({
   runConvention: z.boolean().describe("컨벤션 검사가 이 diff에 의미 있으면 true"),
   runRequirement: z.boolean().describe("요구사항 검사가 이 diff에 의미 있으면 true (애초에 사용 불가면 false)"),
   runBlastRadius: z.boolean().describe("타 영향(blast-radius) 검사가 이 diff에 의미 있으면 true (애초에 사용 불가면 false)"),
+  runTestCoverage: z.boolean().describe("테스트 동반 여부(test-coverage) 검사가 이 diff에 의미 있으면 true (애초에 사용 불가면 false)"),
   reasoning: z.string().describe("각 판단 이유를 한국어로 한두 문장씩 간단히"),
 });
 
@@ -16,12 +17,16 @@ const SYSTEM_PROMPT =
   "사용 불가능한 검사는 무조건 false로 한다. " +
   "예: 주석/문서만 바뀐 diff는 blast-radius가 거의 항상 불필요하고, " +
   "함수/클래스 시그니처가 바뀌거나 삭제된 diff는 blast-radius가 필요할 가능성이 높다. " +
-  "convention은 코드가 조금이라도 바뀌면 대체로 의미가 있다.";
+  "convention은 코드가 조금이라도 바뀌면 대체로 의미가 있다. " +
+  "test-coverage는 동작이 추가·변경된 diff에만 의미가 있고, 설정·문서·리네임 변경에는 불필요하다.";
 
 function buildUserPrompt(context: ReviewContext): string {
   const available = ["convention (항상 사용 가능)"];
-  if (context.requirementPath) available.push("requirement (요구사항 문서 있음)");
+  if (context.requirementPath || context.requirementText) {
+    available.push("requirement (요구사항 내용 있음)");
+  }
   if (context.checkBlastRadius) available.push("blast-radius (코드베이스 검색 가능)");
+  if (context.checkTestCoverage) available.push("test-coverage (테스트 동반 여부 검사 가능)");
 
   return (
     `# 사용 가능한 검사\n${available.join("\n")}\n\n` +
@@ -55,8 +60,9 @@ export async function planReview(context: ReviewContext): Promise<ReviewPlan> {
   return (
     parsed ?? {
       runConvention: true,
-      runRequirement: Boolean(context.requirementPath),
+      runRequirement: Boolean(context.requirementPath || context.requirementText),
       runBlastRadius: Boolean(context.checkBlastRadius),
+      runTestCoverage: Boolean(context.checkTestCoverage),
       reasoning: "계획 응답 파싱 실패 — 안전하게 요청된 모든 검사를 실행함",
     }
   );

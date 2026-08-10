@@ -1,6 +1,7 @@
 import Anthropic from "@anthropic-ai/sdk";
 import { zodOutputFormat } from "@anthropic-ai/sdk/helpers/zod";
 import { z } from "zod";
+import { withPolicy } from "../policy";
 import type { DimensionResult, PromptPreview, ReviewContext } from "../types";
 import { createSearchCodebaseTool } from "../tools/searchCodebase";
 
@@ -27,7 +28,7 @@ const SYSTEM_PROMPT =
   "확인이 끝나면 findings로만 응답한다.";
 
 function buildUserPrompt(context: ReviewContext): string {
-  return `# diff\n${context.diff}`;
+  return withPolicy(`# diff\n${context.diff}`, context.policyText);
 }
 
 export function previewBlastRadiusPrompt(context: ReviewContext): PromptPreview {

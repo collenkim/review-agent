@@ -57,7 +57,8 @@ async function main() {
     console.error(
       "사용법: review-agent --conventions <컨벤션문서.md> " +
         "[--base <비교기준브랜치>] [--diff <diff파일>] [--requirement <요구사항문서.md>] " +
-        "[--blast-radius] [--repo <저장소경로>] [--no-verify] [--dry-run] [--plan]",
+        "[--policy <검증범위정책.md>] [--test-coverage] [--blast-radius] " +
+        "[--repo <저장소경로>] [--no-verify] [--dry-run] [--plan]",
     );
     process.exit(1);
   }
@@ -78,7 +79,9 @@ async function main() {
     diff,
     conventionsPath: args.conventions,
     requirementPath: args.requirement,
+    policyPath: args.policy,
     checkBlastRadius: args["blast-radius"] === "true",
+    checkTestCoverage: args["test-coverage"] === "true",
     repoRoot: args.repo,
     verify: args["no-verify"] !== "true",
     plan: args.plan === "true",
@@ -96,7 +99,8 @@ async function main() {
 
   if (plan) {
     console.log(
-      `\n## plan\nconvention=${plan.runConvention} requirement=${plan.runRequirement} blast-radius=${plan.runBlastRadius}\n${plan.reasoning}`,
+      `\n## plan\nconvention=${plan.runConvention} requirement=${plan.runRequirement} ` +
+        `blast-radius=${plan.runBlastRadius} test-coverage=${plan.runTestCoverage}\n${plan.reasoning}`,
     );
   }
 

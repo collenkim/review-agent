@@ -10,7 +10,8 @@ function formatComment(results: DimensionResult[], plan?: ReviewPlan): string {
   if (plan) {
     lines.push(
       `\n<details><summary>실행 계획</summary>\n\n` +
-        `convention=${plan.runConvention} requirement=${plan.runRequirement} blast-radius=${plan.runBlastRadius}\n\n` +
+        `convention=${plan.runConvention} requirement=${plan.runRequirement} ` +
+        `blast-radius=${plan.runBlastRadius} test-coverage=${plan.runTestCoverage}\n\n` +
         `${plan.reasoning}\n</details>`,
     );
   }
@@ -39,7 +40,10 @@ async function main() {
   const token = core.getInput("github-token", { required: true });
   const conventionsPath = core.getInput("conventions", { required: true });
   const requirementPath = core.getInput("requirement") || undefined;
+  const policyPath = core.getInput("policy") || undefined;
   const checkBlastRadius = core.getInput("blast-radius") === "true";
+  const checkTestCoverage = core.getInput("test-coverage") === "true";
+  const usePrBodyAsRequirement = core.getInput("requirement-from-pr-body") !== "false";
   const verify = core.getInput("verify") !== "false";
   const plan = core.getInput("plan") === "true";
 
@@ -67,11 +71,24 @@ async function main() {
     return;
   }
 
+  // 요구사항은 보통 repo 안의 파일이 아니라 PR 본문에 적힌다. requirement 파일을
+  // 따로 주지 않았다면 PR 본문을 요구사항으로 쓴다(빈 본문이면 dimension 자체가 스킵됨).
+  const prBody = typeof pullRequest.body === "string" ? pullRequest.body : "";
+  const requirementText =
+    !requirementPath && usePrBodyAsRequirement && prBody.trim() ? prBody : undefined;
+
+  if (requirementText) {
+    core.info("requirement 파일이 없어 PR 본문을 요구사항으로 사용합니다.");
+  }
+
   const { results, plan: appliedPlan } = await runReview({
     diff,
     conventionsPath,
     requirementPath,
+    requirementText,
+    policyPath,
     checkBlastRadius,
+    checkTestCoverage,
     repoRoot: process.env.GITHUB_WORKSPACE,
     verify,
     plan,

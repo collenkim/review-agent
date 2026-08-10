@@ -8,8 +8,27 @@
 
 현재 구현된 dimension:
 - `convention` — 코드 컨벤션 위반 검사 (`--conventions` 필수). 구조화 출력만으로 충분해 단일 API 호출.
-- `requirement` — 요구사항 충족 여부 검사 (`--requirement` 지정 시에만 실행). 마찬가지로 단일 API 호출.
+- `requirement` — 요구사항 충족 여부 검사 (`--requirement` 지정 시, GitHub Action은 PR 본문으로 자동). 마찬가지로 단일 API 호출.
+- `test-coverage` — 변경된 동작에 테스트가 동반됐는지 검사 (`--test-coverage` 지정 시에만 실행, 기본 off). 단일 API 호출.
 - `blast-radius` — 타 영향 검토 (`--blast-radius` 지정 시에만 실행, 기본 off). `search_codebase`(git grep 기반) 도구를 Tool Runner로 호출해 diff 밖의 호출부를 찾는다 — 도구 호출이 들어가 비용이 더 크고 오탐 가능성도 있어 명시적으로 켜야 함.
+
+## 검증 범위 정책 (`--policy`)
+
+"무엇을 지적할 것인가"(dimension)와 별개로, **"무엇을 지적하고 무엇을 지적하지 않을 것인가"**를 정하는 정책 문서를 넘길 수 있습니다. 특정 검사 항목이 아니라 **모든 dimension과 verify 단계에 공통 주입**되어 리뷰 전체의 범위를 제한합니다.
+
+```bash
+review-agent --conventions ./conventions.md --policy ./review-policy.md --base main
+```
+
+정책 문서에 넣을 만한 것들:
+- 지적 대상 범위 — "변경된 줄만", "원래 있던 문제는 제외"
+- 제외 항목 — "포매터가 잡는 스타일은 제외", "생성된 코드 제외"
+- 심각도 기준 — 무엇이 `high`이고 무엇이 `low`인지
+- 테스트 요구 수준 — `--test-coverage`를 쓸 때 어디까지 테스트를 요구할지
+
+`docs/review-policy.example.md`에 예시 템플릿이 있습니다. 복사해서 프로젝트에 맞게 고쳐 쓰세요.
+
+정책 없이도 동작하지만, **노이즈(오탐·사소한 지적)를 줄이는 데는 정책이 가장 효과가 큽니다** — 각 dimension 프롬프트에 하드코딩된 기본 규칙만으로는 프로젝트마다 다른 기준을 표현할 수 없기 때문입니다.
 
 ## verify(반박) 단계
 
@@ -37,6 +56,10 @@ npm run review -- --conventions ./path/to/conventions.md --base main
 npm run review -- --conventions ./path/to/conventions.md --diff ./my.diff
 # 요구사항 충족 여부도 함께 검토
 npm run review -- --conventions ./path/to/conventions.md --requirement ./ticket.md
+# 검증 범위 정책 적용 (모든 dimension에 공통)
+npm run review -- --conventions ./path/to/conventions.md --policy ./review-policy.md
+# 테스트 동반 여부까지 검토
+npm run review -- --conventions ./path/to/conventions.md --test-coverage
 # 타 영향(blast radius)까지 검토 — repo가 review-agent 실행 위치와 다르면 --repo로 지정
 npm run review -- --conventions ./path/to/conventions.md --blast-radius --repo /path/to/repo
 # verify(반박) 단계 생략 — 속도/비용 우선일 때
@@ -162,13 +185,17 @@ jobs:
           ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
         with:
           conventions: rules/code-conventions.md
-          # requirement: docs/ticket.md   # 선택
-          # blast-radius: 'true'          # 선택, 기본 false
-          # plan: 'true'                  # 선택, 기본 false
-          # verify: 'false'               # 선택, 기본 true
+          # policy: docs/review-policy.md  # 선택, 검증 범위 정책
+          # requirement: docs/ticket.md    # 선택, 생략하면 PR 본문을 요구사항으로 사용
+          # test-coverage: 'true'          # 선택, 기본 false
+          # blast-radius: 'true'           # 선택, 기본 false
+          # plan: 'true'                   # 선택, 기본 false
+          # verify: 'false'                # 선택, 기본 true
 ```
 
-CLI와 달리 diff를 직접 만들 필요가 없습니다 — PR의 전체 변경분을 GitHub API에서 받아옵니다.
+CLI와 두 가지가 다릅니다:
+- **diff를 직접 만들 필요 없음** — PR의 전체 변경분을 GitHub API에서 받아옵니다.
+- **요구사항을 PR 본문에서 자동 수집** — `requirement` 파일을 주지 않으면 PR 본문을 요구사항으로 씁니다. 요구사항은 보통 repo 안의 파일이 아니라 PR/티켓에 적히기 때문입니다. 본문이 비어 있으면 requirement dimension은 그냥 건너뜁니다. 이 동작이 싫으면 `requirement-from-pr-body: 'false'`.
 
 `high` 심각도 finding이 하나라도 남으면 이 job이 실패합니다 — 브랜치 보호 규칙에 required check로 걸면 병합을 막는 게이트로 쓸 수 있습니다.
 

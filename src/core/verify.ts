@@ -1,6 +1,7 @@
 import Anthropic from "@anthropic-ai/sdk";
 import { zodOutputFormat } from "@anthropic-ai/sdk/helpers/zod";
 import { z } from "zod";
+import { withPolicy } from "./policy";
 import type { DimensionResult, Finding, PromptPreview, ReviewContext } from "./types";
 
 const VerdictSchema = z.object({
@@ -20,10 +21,12 @@ function buildUserPrompt(finding: Finding, dimension: string, context: ReviewCon
       : finding.file
     : "(diff 전체)";
 
-  return (
+  // 정책이 "지적 대상 아님"으로 정한 항목은 여기서 걸러지는 게 맞으므로 verify에도 주입한다
+  return withPolicy(
     `# diff\n${context.diff}\n\n` +
-    `# 검증할 지적 (dimension: ${dimension})\n` +
-    `위치: ${location}\n심각도: ${finding.severity}\n내용: ${finding.summary}`
+      `# 검증할 지적 (dimension: ${dimension})\n` +
+      `위치: ${location}\n심각도: ${finding.severity}\n내용: ${finding.summary}`,
+    context.policyText,
   );
 }
 

@@ -3,10 +3,24 @@ export interface ReviewContext {
   diff: string;
   /** path to a markdown file describing the project's code conventions */
   conventionsPath: string;
-  /** path to a text/markdown file describing the requirement this diff should satisfy */
+  /** 요구사항 문서 경로. requirementText가 있으면 그쪽이 우선한다. */
   requirementPath?: string;
+  /**
+   * 파일이 아닌 곳에서 받은 요구사항 원문 (예: GitHub Action이 넘기는 PR 본문).
+   * 요구사항은 보통 티켓/PR에 있지 repo 안의 파일이 아니라서 텍스트 입력도 받는다.
+   */
+  requirementText?: string;
+  /**
+   * 검증 범위 정책 문서 경로. 무엇을 지적하고 무엇을 지적하지 않을지를 정하며
+   * 특정 검사 항목이 아니라 모든 dimension에 공통으로 주입된다.
+   */
+  policyPath?: string;
+  /** policyPath를 읽어 내부에서 채우는 값 — 호출자가 직접 넣지 않는다. */
+  policyText?: string;
   /** blast-radius(타 영향) dimension 실행 여부 — 기본 off (도구 호출이 들어가 비용이 더 큼) */
   checkBlastRadius?: boolean;
+  /** test-coverage(테스트 동반 여부) dimension 실행 여부 — 기본 off */
+  checkTestCoverage?: boolean;
   /** blast-radius 검색 대상 저장소 루트. 생략 시 현재 작업 디렉토리 */
   repoRoot?: string;
   /** finding별 반박(verify) 단계 실행 여부. 기본 true — false만 명시적으로 꺼짐 */
@@ -23,6 +37,7 @@ export interface ReviewPlan {
   runConvention: boolean;
   runRequirement: boolean;
   runBlastRadius: boolean;
+  runTestCoverage: boolean;
   reasoning: string;
 }
 

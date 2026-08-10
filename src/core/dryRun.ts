@@ -1,8 +1,11 @@
 import { readFileSync } from "fs";
+
 import { previewBlastRadiusPrompt } from "./dimensions/blastRadius";
 import { previewConventionPrompt } from "./dimensions/convention";
 import { previewRequirementPrompt } from "./dimensions/requirement";
+import { previewTestCoveragePrompt } from "./dimensions/testCoverage";
 import { previewPlanPrompt } from "./plan";
+import { resolveRequirementText, withResolvedPolicy } from "./review";
 import type { PromptPreview, ReviewContext } from "./types";
 import { previewVerifyPrompt } from "./verify";
 
@@ -11,26 +14,31 @@ import { previewVerifyPrompt } from "./verify";
  * claude.ai 등에 수동으로 붙여넣어 확인/튜닝하는 용도.
  */
 export function buildDryRunPreviews(context: ReviewContext): PromptPreview[] {
+  const resolved = withResolvedPolicy(context);
   const previews: PromptPreview[] = [];
 
-  if (context.plan) {
-    previews.push(previewPlanPrompt(context));
+  if (resolved.plan) {
+    previews.push(previewPlanPrompt(resolved));
   }
 
-  const conventionsText = readFileSync(context.conventionsPath, "utf-8");
-  previews.push(previewConventionPrompt(context, conventionsText));
+  const conventionsText = readFileSync(resolved.conventionsPath, "utf-8");
+  previews.push(previewConventionPrompt(resolved, conventionsText));
 
-  if (context.requirementPath) {
-    const requirementText = readFileSync(context.requirementPath, "utf-8");
-    previews.push(previewRequirementPrompt(context, requirementText));
+  const requirementText = resolveRequirementText(resolved);
+  if (requirementText) {
+    previews.push(previewRequirementPrompt(resolved, requirementText));
   }
 
-  if (context.checkBlastRadius) {
-    previews.push(previewBlastRadiusPrompt(context));
+  if (resolved.checkBlastRadius) {
+    previews.push(previewBlastRadiusPrompt(resolved));
   }
 
-  if (context.verify !== false) {
-    previews.push(previewVerifyPrompt(context));
+  if (resolved.checkTestCoverage) {
+    previews.push(previewTestCoveragePrompt(resolved));
+  }
+
+  if (resolved.verify !== false) {
+    previews.push(previewVerifyPrompt(resolved));
   }
 
   return previews;

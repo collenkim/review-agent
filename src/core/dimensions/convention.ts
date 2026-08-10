@@ -1,6 +1,7 @@
 import Anthropic from "@anthropic-ai/sdk";
 import { zodOutputFormat } from "@anthropic-ai/sdk/helpers/zod";
 import { z } from "zod";
+import { withPolicy } from "../policy";
 import type { DimensionResult, PromptPreview, ReviewContext } from "../types";
 
 const FindingsSchema = z.object({
@@ -19,7 +20,10 @@ const SYSTEM_PROMPT =
   "버그나 로직 문제는 다루지 않는다. 위반이 없으면 빈 배열을 반환한다.";
 
 function buildUserPrompt(context: ReviewContext, conventionsText: string): string {
-  return `# 컨벤션 문서\n${conventionsText}\n\n# 리뷰할 diff\n${context.diff}`;
+  return withPolicy(
+    `# 컨벤션 문서\n${conventionsText}\n\n# 리뷰할 diff\n${context.diff}`,
+    context.policyText,
+  );
 }
 
 export function previewConventionPrompt(
