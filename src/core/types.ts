@@ -9,6 +9,8 @@ export interface ReviewContext {
   checkBlastRadius?: boolean;
   /** blast-radius 검색 대상 저장소 루트. 생략 시 현재 작업 디렉토리 */
   repoRoot?: string;
+  /** finding별 반박(verify) 단계 실행 여부. 기본 true — false만 명시적으로 꺼짐 */
+  verify?: boolean;
 }
 
 export type Severity = "high" | "medium" | "low";

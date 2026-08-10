@@ -27,7 +27,7 @@ async function main() {
     console.error(
       "사용법: review-agent --conventions <컨벤션문서.md> " +
         "[--diff <diff파일>] [--requirement <요구사항문서.md>] " +
-        "[--blast-radius] [--repo <저장소경로>]",
+        "[--blast-radius] [--repo <저장소경로>] [--no-verify]",
     );
     process.exit(1);
   }
@@ -47,6 +47,7 @@ async function main() {
     requirementPath: args.requirement,
     checkBlastRadius: args["blast-radius"] === "true",
     repoRoot: args.repo,
+    verify: args["no-verify"] !== "true",
   });
 
   for (const result of results) {

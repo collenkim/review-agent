@@ -11,6 +11,10 @@
 - `requirement` — 요구사항 충족 여부 검사 (`--requirement` 지정 시에만 실행). 마찬가지로 단일 API 호출.
 - `blast-radius` — 타 영향 검토 (`--blast-radius` 지정 시에만 실행, 기본 off). `search_codebase`(git grep 기반) 도구를 Tool Runner로 호출해 diff 밖의 호출부를 찾는다 — 도구 호출이 들어가 비용이 더 크고 오탐 가능성도 있어 명시적으로 켜야 함.
 
+## verify(반박) 단계
+
+모든 dimension의 finding은 기본적으로 검증을 한 번 더 거칩니다(`src/core/verify.ts`). 별도의 Claude 호출로 "이 지적이 diff에 실제 근거가 있는가"를 회의적으로 재확인하고, 근거가 부족하면(refuted) 버립니다 — 오탐(특히 `blast-radius`)을 줄이기 위함입니다. finding 개수만큼 API 호출이 추가되니, 비용을 아끼거나 빠르게 훑어볼 때는 `--no-verify`로 끌 수 있습니다.
+
 ## 사용법
 
 ```bash
@@ -25,6 +29,8 @@ npm run review -- --conventions ./path/to/conventions.md --diff ./my.diff
 npm run review -- --conventions ./path/to/conventions.md --requirement ./ticket.md
 # 타 영향(blast radius)까지 검토 — repo가 review-agent 실행 위치와 다르면 --repo로 지정
 npm run review -- --conventions ./path/to/conventions.md --blast-radius --repo /path/to/repo
+# verify(반박) 단계 생략 — 속도/비용 우선일 때
+npm run review -- --conventions ./path/to/conventions.md --no-verify
 ```
 
 `--diff`를 생략하면 현재 디렉토리의 `git diff`(unstaged 변경분)를 사용합니다.

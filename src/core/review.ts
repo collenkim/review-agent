@@ -3,6 +3,7 @@ import { reviewBlastRadius } from "./dimensions/blastRadius";
 import { reviewConvention } from "./dimensions/convention";
 import { reviewRequirement } from "./dimensions/requirement";
 import type { DimensionResult, ReviewContext } from "./types";
+import { verifyResults } from "./verify";
 
 export async function runReview(
   context: ReviewContext,
@@ -22,7 +23,12 @@ export async function runReview(
     tasks.push(reviewBlastRadius(context));
   }
 
-  return Promise.all(tasks);
+  const results = await Promise.all(tasks);
+
+  if (context.verify === false) {
+    return results;
+  }
+  return verifyResults(results, context);
 }
 
 export type { DimensionResult, Finding, ReviewContext } from "./types";
