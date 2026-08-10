@@ -2,6 +2,7 @@ import { readFileSync } from "fs";
 import { previewBlastRadiusPrompt } from "./dimensions/blastRadius";
 import { previewConventionPrompt } from "./dimensions/convention";
 import { previewRequirementPrompt } from "./dimensions/requirement";
+import { previewPlanPrompt } from "./plan";
 import type { PromptPreview, ReviewContext } from "./types";
 import { previewVerifyPrompt } from "./verify";
 
@@ -11,6 +12,10 @@ import { previewVerifyPrompt } from "./verify";
  */
 export function buildDryRunPreviews(context: ReviewContext): PromptPreview[] {
   const previews: PromptPreview[] = [];
+
+  if (context.plan) {
+    previews.push(previewPlanPrompt(context));
+  }
 
   const conventionsText = readFileSync(context.conventionsPath, "utf-8");
   previews.push(previewConventionPrompt(context, conventionsText));

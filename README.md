@@ -15,6 +15,14 @@
 
 모든 dimension의 finding은 기본적으로 검증을 한 번 더 거칩니다(`src/core/verify.ts`). 별도의 Claude 호출로 "이 지적이 diff에 실제 근거가 있는가"를 회의적으로 재확인하고, 근거가 부족하면(refuted) 버립니다 — 오탐(특히 `blast-radius`)을 줄이기 위함입니다. finding 개수만큼 API 호출이 추가되니, 비용을 아끼거나 빠르게 훑어볼 때는 `--no-verify`로 끌 수 있습니다.
 
+## plan(계획) 단계
+
+`--plan`을 주면, 실제 dimension을 돌리기 전에 Claude가 diff를 먼저 보고 어떤 dimension이 이 diff에 실제로 의미가 있는지 판단합니다(`src/core/plan.ts`). 예를 들어 문서/주석만 바뀐 diff라면 `--blast-radius`를 켰어도 불필요하다고 판단해 건너뜁니다. **plan은 사용자가 CLI로 켠 dimension을 상한선으로 두고 그중 불필요한 것만 끄는 역할만 합니다** — 안 켠 dimension을 plan이 새로 켜지는 않습니다. 판단 이유는 결과에 함께 출력됩니다.
+
+```bash
+npm run review -- --conventions ./path/to/conventions.md --blast-radius --plan
+```
+
 ## 사용법
 
 ```bash

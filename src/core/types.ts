@@ -11,6 +11,24 @@ export interface ReviewContext {
   repoRoot?: string;
   /** finding별 반박(verify) 단계 실행 여부. 기본 true — false만 명시적으로 꺼짐 */
   verify?: boolean;
+  /**
+   * 실행 전 Claude가 diff를 보고 어떤 dimension이 실제로 필요한지 판단하게 할지.
+   * 기본 false. 켜져 있어도 사용자가 명시적으로 켜지 않은 dimension을 plan이
+   * 새로 켜지는 않음 — 이미 켠 것 중 불필요한 걸 끄는 역할만 함(상한선은 항상 사용자 지정값).
+   */
+  plan?: boolean;
+}
+
+export interface ReviewPlan {
+  runConvention: boolean;
+  runRequirement: boolean;
+  runBlastRadius: boolean;
+  reasoning: string;
+}
+
+export interface ReviewOutcome {
+  results: DimensionResult[];
+  plan?: ReviewPlan;
 }
 
 export type Severity = "high" | "medium" | "low";

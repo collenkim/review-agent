@@ -2,33 +2,50 @@ import { readFileSync } from "fs";
 import { reviewBlastRadius } from "./dimensions/blastRadius";
 import { reviewConvention } from "./dimensions/convention";
 import { reviewRequirement } from "./dimensions/requirement";
-import type { DimensionResult, ReviewContext } from "./types";
+import { planReview } from "./plan";
+import type { DimensionResult, ReviewContext, ReviewOutcome, ReviewPlan } from "./types";
 import { verifyResults } from "./verify";
 
-export async function runReview(
-  context: ReviewContext,
-): Promise<DimensionResult[]> {
-  const conventionsText = readFileSync(context.conventionsPath, "utf-8");
+export async function runReview(context: ReviewContext): Promise<ReviewOutcome> {
+  let plan: ReviewPlan | undefined;
+  let effectiveContext = context;
 
-  const tasks: Promise<DimensionResult>[] = [
-    reviewConvention(context, conventionsText),
-  ];
-
-  if (context.requirementPath) {
-    const requirementText = readFileSync(context.requirementPath, "utf-8");
-    tasks.push(reviewRequirement(context, requirementText));
+  if (context.plan) {
+    plan = await planReview(context);
+    // plan은 사용자가 이미 켠 것을 끄는 역할만 함 — 상한선은 항상 원래 context
+    effectiveContext = {
+      ...context,
+      requirementPath:
+        context.requirementPath && plan.runRequirement ? context.requirementPath : undefined,
+      checkBlastRadius: Boolean(context.checkBlastRadius && plan.runBlastRadius),
+    };
   }
 
-  if (context.checkBlastRadius) {
-    tasks.push(reviewBlastRadius(context));
+  const conventionsText = readFileSync(effectiveContext.conventionsPath, "utf-8");
+
+  const tasks: Promise<DimensionResult>[] = [];
+
+  if (!plan || plan.runConvention) {
+    tasks.push(reviewConvention(effectiveContext, conventionsText));
   }
 
-  const results = await Promise.all(tasks);
-
-  if (context.verify === false) {
-    return results;
+  if (effectiveContext.requirementPath) {
+    const requirementText = readFileSync(effectiveContext.requirementPath, "utf-8");
+    tasks.push(reviewRequirement(effectiveContext, requirementText));
   }
-  return verifyResults(results, context);
+
+  if (effectiveContext.checkBlastRadius) {
+    tasks.push(reviewBlastRadius(effectiveContext));
+  }
+
+  const dimensionResults = await Promise.all(tasks);
+
+  const results =
+    effectiveContext.verify === false
+      ? dimensionResults
+      : await verifyResults(dimensionResults, effectiveContext);
+
+  return { results, plan };
 }
 
-export type { DimensionResult, Finding, ReviewContext } from "./types";
+export type { DimensionResult, Finding, ReviewContext, ReviewOutcome, ReviewPlan } from "./types";

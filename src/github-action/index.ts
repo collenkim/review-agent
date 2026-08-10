@@ -1,11 +1,19 @@
 import * as core from "@actions/core";
 import * as github from "@actions/github";
 import { runReview } from "../core/review";
-import type { DimensionResult } from "../core/types";
+import type { DimensionResult, ReviewPlan } from "../core/types";
 
-function formatComment(results: DimensionResult[]): string {
+function formatComment(results: DimensionResult[], plan?: ReviewPlan): string {
   const totalFindings = results.reduce((sum, r) => sum + r.findings.length, 0);
   const lines: string[] = ["## 🤖 AI 코드 리뷰"];
+
+  if (plan) {
+    lines.push(
+      `\n<details><summary>실행 계획</summary>\n\n` +
+        `convention=${plan.runConvention} requirement=${plan.runRequirement} blast-radius=${plan.runBlastRadius}\n\n` +
+        `${plan.reasoning}\n</details>`,
+    );
+  }
 
   if (totalFindings === 0) {
     lines.push("발견된 문제가 없습니다.");
@@ -33,6 +41,7 @@ async function main() {
   const requirementPath = core.getInput("requirement") || undefined;
   const checkBlastRadius = core.getInput("blast-radius") === "true";
   const verify = core.getInput("verify") !== "false";
+  const plan = core.getInput("plan") === "true";
 
   const pullRequest = github.context.payload.pull_request;
   if (!pullRequest) {
@@ -58,20 +67,21 @@ async function main() {
     return;
   }
 
-  const results = await runReview({
+  const { results, plan: appliedPlan } = await runReview({
     diff,
     conventionsPath,
     requirementPath,
     checkBlastRadius,
     repoRoot: process.env.GITHUB_WORKSPACE,
     verify,
+    plan,
   });
 
   await octokit.rest.issues.createComment({
     owner,
     repo,
     issue_number: pullRequest.number,
-    body: formatComment(results),
+    body: formatComment(results, appliedPlan),
   });
 
   const hasHighSeverity = results.some((r) =>

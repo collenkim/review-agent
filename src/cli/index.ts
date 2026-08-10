@@ -28,7 +28,7 @@ async function main() {
     console.error(
       "사용법: review-agent --conventions <컨벤션문서.md> " +
         "[--diff <diff파일>] [--requirement <요구사항문서.md>] " +
-        "[--blast-radius] [--repo <저장소경로>] [--no-verify] [--dry-run]",
+        "[--blast-radius] [--repo <저장소경로>] [--no-verify] [--dry-run] [--plan]",
     );
     process.exit(1);
   }
@@ -49,6 +49,7 @@ async function main() {
     checkBlastRadius: args["blast-radius"] === "true",
     repoRoot: args.repo,
     verify: args["no-verify"] !== "true",
+    plan: args.plan === "true",
   };
 
   if (args["dry-run"] === "true") {
@@ -59,7 +60,13 @@ async function main() {
     return;
   }
 
-  const results = await runReview(context);
+  const { results, plan } = await runReview(context);
+
+  if (plan) {
+    console.log(
+      `\n## plan\nconvention=${plan.runConvention} requirement=${plan.runRequirement} blast-radius=${plan.runBlastRadius}\n${plan.reasoning}`,
+    );
+  }
 
   for (const result of results) {
     console.log(`\n## ${result.dimension}`);

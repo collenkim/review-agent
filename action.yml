@@ -19,6 +19,10 @@ inputs:
     description: "finding별 반박(verify) 단계 실행 여부"
     required: false
     default: "true"
+  plan:
+    description: "실행 전 diff를 보고 어떤 dimension이 실제로 필요한지 Claude가 판단해 불필요한 걸 끄게 할지"
+    required: false
+    default: "false"
 runs:
   using: "node20"
   main: "action-dist/index.js"
