@@ -1,5 +1,6 @@
 #!/usr/bin/env node
 import { execSync } from "child_process";
+import { buildDryRunPreviews, formatDryRunReport } from "../core/dryRun";
 import { runReview } from "../core/review";
 
 function parseArgs(argv: string[]): Record<string, string> {
@@ -27,7 +28,7 @@ async function main() {
     console.error(
       "사용법: review-agent --conventions <컨벤션문서.md> " +
         "[--diff <diff파일>] [--requirement <요구사항문서.md>] " +
-        "[--blast-radius] [--repo <저장소경로>] [--no-verify]",
+        "[--blast-radius] [--repo <저장소경로>] [--no-verify] [--dry-run]",
     );
     process.exit(1);
   }
@@ -41,14 +42,24 @@ async function main() {
     return;
   }
 
-  const results = await runReview({
+  const context = {
     diff,
     conventionsPath: args.conventions,
     requirementPath: args.requirement,
     checkBlastRadius: args["blast-radius"] === "true",
     repoRoot: args.repo,
     verify: args["no-verify"] !== "true",
-  });
+  };
+
+  if (args["dry-run"] === "true") {
+    console.log(formatDryRunReport(buildDryRunPreviews(context)));
+    console.log(
+      "\n(API 호출 없음 — 위 프롬프트를 claude.ai 등에 직접 붙여넣어 확인하세요.)",
+    );
+    return;
+  }
+
+  const results = await runReview(context);
 
   for (const result of results) {
     console.log(`\n## ${result.dimension}`);

@@ -27,3 +27,14 @@ export interface DimensionResult {
   dimension: string;
   findings: Finding[];
 }
+
+/** 실제 API 호출 없이 미리보기(dry-run)할 때 쓰는, 조립된 프롬프트 한 벌 */
+export interface PromptPreview {
+  dimension: string;
+  /** 이 프롬프트로 실제 결과를 재현할 수 있는지. blast-radius/verify는 도구 호출·finding 입력에
+   *  따라 이후 대화가 갈리거나 예시 데이터를 쓰므로 false */
+  reproducible: boolean;
+  note?: string;
+  system: string;
+  user: string;
+}

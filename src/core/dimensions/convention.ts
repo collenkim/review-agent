@@ -1,7 +1,7 @@
 import Anthropic from "@anthropic-ai/sdk";
 import { zodOutputFormat } from "@anthropic-ai/sdk/helpers/zod";
 import { z } from "zod";
-import type { DimensionResult, ReviewContext } from "../types";
+import type { DimensionResult, PromptPreview, ReviewContext } from "../types";
 
 const FindingsSchema = z.object({
   findings: z.array(
@@ -14,6 +14,26 @@ const FindingsSchema = z.object({
   ),
 });
 
+const SYSTEM_PROMPT =
+  "너는 코드 리뷰어다. 아래 프로젝트 컨벤션 문서를 기준으로 diff에서 컨벤션 위반만 찾는다. " +
+  "버그나 로직 문제는 다루지 않는다. 위반이 없으면 빈 배열을 반환한다.";
+
+function buildUserPrompt(context: ReviewContext, conventionsText: string): string {
+  return `# 컨벤션 문서\n${conventionsText}\n\n# 리뷰할 diff\n${context.diff}`;
+}
+
+export function previewConventionPrompt(
+  context: ReviewContext,
+  conventionsText: string,
+): PromptPreview {
+  return {
+    dimension: "convention",
+    reproducible: true,
+    system: SYSTEM_PROMPT,
+    user: buildUserPrompt(context, conventionsText),
+  };
+}
+
 const client = new Anthropic();
 
 export async function reviewConvention(
@@ -23,15 +43,8 @@ export async function reviewConvention(
   const response = await client.messages.parse({
     model: "claude-opus-5",
     max_tokens: 8000,
-    system:
-      "너는 코드 리뷰어다. 아래 프로젝트 컨벤션 문서를 기준으로 diff에서 컨벤션 위반만 찾는다. " +
-      "버그나 로직 문제는 다루지 않는다. 위반이 없으면 빈 배열을 반환한다.",
-    messages: [
-      {
-        role: "user",
-        content: `# 컨벤션 문서\n${conventionsText}\n\n# 리뷰할 diff\n${context.diff}`,
-      },
-    ],
+    system: SYSTEM_PROMPT,
+    messages: [{ role: "user", content: buildUserPrompt(context, conventionsText) }],
     output_config: { format: zodOutputFormat(FindingsSchema) },
   });
 

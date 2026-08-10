@@ -35,6 +35,19 @@ npm run review -- --conventions ./path/to/conventions.md --no-verify
 
 `--diff`를 생략하면 현재 디렉토리의 `git diff`(unstaged 변경분)를 사용합니다.
 
+## 프롬프트 dry-run (API 비용 없이 프롬프트 확인/튜닝)
+
+`--dry-run`을 주면 API를 전혀 호출하지 않고, 각 dimension이 실제로 보낼 system/user 프롬프트만 출력합니다. API 키가 없어도 동작합니다. 출력된 프롬프트를 claude.ai(구독 요금제 — API 종량제와 별도 과금) 등에 그대로 붙여넣어 결과를 확인하고, 만족스러운 문구가 나오면 그 내용을 각 dimension 파일의 `SYSTEM_PROMPT`에 반영하는 식으로 튜닝하면 됩니다.
+
+```bash
+npm run review -- --conventions ./path/to/conventions.md --dry-run
+```
+
+dimension마다 재현 정도가 다릅니다:
+- `convention`, `requirement` — 단일 호출이라 완전히 동일하게 재현됨.
+- `blast-radius` — `search_codebase` 도구를 여러 번 호출하는 다중 턴 대화라 **첫 턴만** 미리보기 가능. 실제 대화 흐름은 이 방식으로 못 봄.
+- `verify` — finding을 입력으로 받는 구조라 실제 finding이 없으면 예시(더미) finding으로 형식만 보여줌.
+
 ## GitHub Action
 
 PR이 열릴 때마다 자동으로 리뷰하고 싶은 다른 repo의 워크플로에서 이렇게 참조합니다:
