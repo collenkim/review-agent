@@ -17,7 +17,9 @@ async function main() {
   const args = parseArgs(process.argv.slice(2));
 
   if (!args.conventions) {
-    console.error("사용법: review-agent --conventions <컨벤션문서.md> [--diff <diff파일>]");
+    console.error(
+      "사용법: review-agent --conventions <컨벤션문서.md> [--diff <diff파일>] [--requirement <요구사항문서.md>]",
+    );
     process.exit(1);
   }
 
@@ -30,7 +32,11 @@ async function main() {
     return;
   }
 
-  const results = await runReview({ diff, conventionsPath: args.conventions });
+  const results = await runReview({
+    diff,
+    conventionsPath: args.conventions,
+    requirementPath: args.requirement,
+  });
 
   for (const result of results) {
     console.log(`\n## ${result.dimension}`);
@@ -39,7 +45,11 @@ async function main() {
       continue;
     }
     for (const finding of result.findings) {
-      const location = finding.line ? `${finding.file}:${finding.line}` : finding.file;
+      const location = finding.file
+        ? finding.line
+          ? `${finding.file}:${finding.line}`
+          : finding.file
+        : "(전체)";
       console.log(`[${finding.severity}] ${location} — ${finding.summary}`);
     }
   }
