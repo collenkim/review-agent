@@ -1,7 +1,36 @@
 #!/usr/bin/env node
-import { execSync } from "child_process";
+import { spawnSync } from "child_process";
+import { readFileSync } from "fs";
+
 import { buildDryRunPreviews, formatDryRunReport } from "../core/dryRun";
 import { runReview } from "../core/review";
+
+const MAX_DIFF_BYTES = 50 * 1024 * 1024;
+
+/**
+ * 리뷰할 diff를 구한다. 우선순위: --diff(파일) > --base(브랜치 비교) > 현재 unstaged 변경분.
+ * 브랜치명은 shell을 거치지 않는 spawnSync 인자로만 넘겨 명령어 주입 여지를 없앤다.
+ */
+function resolveDiff(args: Record<string, string>): string {
+  if (args.diff) {
+    return readFileSync(args.diff, "utf-8");
+  }
+
+  // `base...HEAD`는 두 브랜치가 갈라진 지점부터의 변경분 — PR에서 보는 범위와 같다
+  const gitArgs = args.base ? ["diff", `${args.base}...HEAD`] : ["diff"];
+  const result = spawnSync("git", gitArgs, {
+    encoding: "utf-8",
+    maxBuffer: MAX_DIFF_BYTES,
+  });
+
+  if (result.error) {
+    throw new Error(`git 실행 실패: ${result.error.message}`);
+  }
+  if (result.status !== 0) {
+    throw new Error(`git ${gitArgs.join(" ")} 실패 (exit ${result.status}): ${result.stderr}`);
+  }
+  return result.stdout;
+}
 
 function parseArgs(argv: string[]): Record<string, string> {
   const args: Record<string, string> = {};
@@ -27,18 +56,21 @@ async function main() {
   if (!args.conventions) {
     console.error(
       "사용법: review-agent --conventions <컨벤션문서.md> " +
-        "[--diff <diff파일>] [--requirement <요구사항문서.md>] " +
+        "[--base <비교기준브랜치>] [--diff <diff파일>] [--requirement <요구사항문서.md>] " +
         "[--blast-radius] [--repo <저장소경로>] [--no-verify] [--dry-run] [--plan]",
     );
     process.exit(1);
   }
 
-  const diff = args.diff
-    ? require("fs").readFileSync(args.diff, "utf-8")
-    : execSync("git diff", { encoding: "utf-8" });
+  const diff = resolveDiff(args);
 
   if (!diff.trim()) {
-    console.log("diff가 비어 있습니다. 리뷰할 변경사항이 없어요.");
+    const source = args.diff
+      ? `diff 파일(${args.diff})이 비어 있습니다.`
+      : args.base
+        ? `${args.base} 기준으로 변경된 내용이 없습니다.`
+        : "unstaged 변경사항이 없습니다. 커밋된 변경을 리뷰하려면 --base <브랜치>를 쓰세요.";
+    console.log(source);
     return;
   }
 
@@ -86,6 +118,8 @@ async function main() {
 }
 
 main().catch((err) => {
-  console.error(err);
+  // 대부분 경로 오타·브랜치명 오타 같은 사용자 실수라 메시지만 보여준다.
+  // 스택이 필요하면 REVIEW_AGENT_DEBUG=1로 실행.
+  console.error(process.env.REVIEW_AGENT_DEBUG ? err : `오류: ${err instanceof Error ? err.message : String(err)}`);
   process.exit(1);
 });

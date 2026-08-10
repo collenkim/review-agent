@@ -31,6 +31,8 @@ npm run build
 
 export ANTHROPIC_API_KEY=sk-ant-...
 npm run review -- --conventions ./path/to/conventions.md
+# 브랜치 단위로 리뷰 (main 기준 현재 브랜치의 변경분)
+npm run review -- --conventions ./path/to/conventions.md --base main
 # 특정 diff 파일 지정
 npm run review -- --conventions ./path/to/conventions.md --diff ./my.diff
 # 요구사항 충족 여부도 함께 검토
@@ -41,7 +43,7 @@ npm run review -- --conventions ./path/to/conventions.md --blast-radius --repo /
 npm run review -- --conventions ./path/to/conventions.md --no-verify
 ```
 
-`--diff`를 생략하면 현재 디렉토리의 `git diff`를 사용합니다. **주의: 이건 unstaged 변경분만입니다** — staged된 것도, 커밋된 것도, 브랜치 비교도 아닙니다. 커밋/브랜치 단위로 리뷰하려면 아래 "다른 프로젝트를 리뷰하기"를 참고하세요.
+`--diff`와 `--base`를 둘 다 생략하면 현재 디렉토리의 `git diff`(**unstaged 변경분만**)를 사용합니다. 커밋된 변경을 리뷰하려면 `--base <브랜치>`를 쓰세요.
 
 ## 다른 프로젝트를 리뷰하기
 
@@ -69,20 +71,28 @@ node /path/to/review-agent/dist/cli/index.js --conventions ./docs/style-guide.md
 
 ### 2. 커밋 / 브랜치 단위로 리뷰하기
 
-브랜치를 직접 지정하는 옵션은 **아직 없습니다**. diff를 먼저 뽑아서 `--diff`로 넘기세요:
+`--base <브랜치>`로 비교 기준을 주면 됩니다. 내부적으로 `git diff <base>...HEAD`를 실행하므로, **두 브랜치가 갈라진 지점부터의 변경분** — PR에서 보는 범위와 같습니다.
 
 ```bash
 cd /path/to/my-project
+git checkout feature/my-branch
 
-# 브랜치 전체 변경분 (main 기준)
-git diff main...HEAD > review.diff
+review-agent --conventions ./docs/style-guide.md --base main --dry-run
+```
 
-# 특정 커밋 하나
-git show <commit-sha> > review.diff
+diff를 어디서 가져올지는 이 순서로 정해집니다:
 
-# staged 변경분 (커밋 직전 검토)
-git diff --staged > review.diff
+| 옵션 | 대상 |
+|---|---|
+| `--diff <파일>` | 미리 만들어둔 diff 파일 |
+| `--base <브랜치>` | `git diff <base>...HEAD` — 브랜치 전체 변경분 |
+| (둘 다 없음) | `git diff` — **unstaged 변경분만** |
 
+`--base`로 표현이 안 되는 범위(특정 커밋 하나, staged만 등)는 diff를 직접 뽑아 `--diff`로 넘기세요:
+
+```bash
+git show <commit-sha> > review.diff     # 특정 커밋 하나
+git diff --staged > review.diff         # staged 변경분
 review-agent --conventions ./docs/style-guide.md --diff review.diff --dry-run
 ```
 
@@ -102,7 +112,7 @@ review-agent --conventions "/path/to/docs-repo/rules/code-conventions.md" --diff
 npm run review -- --conventions ./path/to/conventions.md --dry-run
 
 # 터미널에서 복사하기 번거로우면 클립보드로 바로 (PowerShell)
-node dist/cli/index.js --conventions docs/conventions.md --diff fixtures/sample.diff --no-verify --dry-run | Set-Clipboard
+review-agent --conventions ./docs/style-guide.md --base main --no-verify --dry-run | Set-Clipboard
 ```
 
 dimension마다 재현 정도가 다릅니다:
