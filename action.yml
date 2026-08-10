@@ -1,0 +1,24 @@
+name: "AI Code Review"
+description: "Claude 기반 diff 리뷰 — 컨벤션/요구사항/타영향(선택) 검토 후 PR에 코멘트를 남기고, high 심각도 finding이 있으면 실패시킨다."
+inputs:
+  github-token:
+    description: "PR 코멘트 작성 및 diff 조회에 쓸 토큰"
+    required: true
+    default: ${{ github.token }}
+  conventions:
+    description: "컨벤션 문서 경로 (체크아웃된 레포 기준 상대경로)"
+    required: true
+  requirement:
+    description: "요구사항 문서 경로. 지정 시에만 requirement dimension 실행"
+    required: false
+  blast-radius:
+    description: "타 영향(blast-radius) dimension 실행 여부"
+    required: false
+    default: "false"
+  verify:
+    description: "finding별 반박(verify) 단계 실행 여부"
+    required: false
+    default: "true"
+runs:
+  using: "node20"
+  main: "action-dist/index.js"

@@ -8,6 +8,7 @@
   },
   "scripts": {
     "build": "tsc",
+    "build:action": "esbuild src/github-action/index.ts --bundle --platform=node --target=node20 --outfile=action-dist/index.js",
     "review": "node dist/cli/index.js",
     "test": "echo \"Error: no test specified\" && exit 1"
   },
@@ -24,11 +25,14 @@
   },
   "homepage": "https://github.com/collenkim/review-agent#readme",
   "dependencies": {
+    "@actions/core": "^3.0.1",
+    "@actions/github": "^9.1.1",
     "@anthropic-ai/sdk": "^0.116.0",
     "zod": "^4.4.3"
   },
   "devDependencies": {
     "@types/node": "^26.2.0",
+    "esbuild": "^0.28.2",
     "typescript": "^7.0.2"
   }
 }

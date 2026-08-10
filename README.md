@@ -4,7 +4,7 @@
 ## 구조
 - `src/core` — 리뷰 로직 (dimension별 검사 + 결과 취합). CLI/GitHub Action이 공통으로 호출.
 - `src/cli` — 로컬 실행용 CLI 진입점.
-- `src/github-action` — CI 게이트용 진입점 (TODO, 아직 미구현).
+- `src/github-action` — CI 게이트용 진입점. PR diff를 받아 리뷰하고 PR에 코멘트, high 심각도 finding이 있으면 실패 처리.
 
 현재 구현된 dimension:
 - `convention` — 코드 컨벤션 위반 검사 (`--conventions` 필수). 구조화 출력만으로 충분해 단일 API 호출.
@@ -34,4 +34,40 @@ npm run review -- --conventions ./path/to/conventions.md --no-verify
 ```
 
 `--diff`를 생략하면 현재 디렉토리의 `git diff`(unstaged 변경분)를 사용합니다.
+
+## GitHub Action
+
+PR이 열릴 때마다 자동으로 리뷰하고 싶은 다른 repo의 워크플로에서 이렇게 참조합니다:
+
+```yaml
+# .github/workflows/review.yml (리뷰 대상 repo에)
+name: AI Code Review
+on:
+  pull_request:
+
+jobs:
+  review:
+    runs-on: ubuntu-latest
+    permissions:
+      pull-requests: write
+    steps:
+      - uses: actions/checkout@v4
+      - uses: collenkim/review-agent@main
+        env:
+          ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
+        with:
+          conventions: rules/code-conventions.md
+          # requirement: docs/ticket.md   # 선택
+          # blast-radius: 'true'          # 선택, 기본 false
+```
+
+`high` 심각도 finding이 하나라도 남으면 이 job이 실패합니다 — 브랜치 보호 규칙에 required check로 걸면 병합을 막는 게이트로 쓸 수 있습니다.
+
+### 액션 자체를 수정했다면
+
+이 action은 JS 액션이라 실행 시 `npm install`을 해주지 않습니다. `src/github-action`을 고쳤으면 번들도 다시 만들어서 커밋해야 반영됩니다:
+
+```bash
+npm run build:action   # action-dist/index.js 재생성
+```
 
