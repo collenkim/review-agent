@@ -41,7 +41,58 @@ npm run review -- --conventions ./path/to/conventions.md --blast-radius --repo /
 npm run review -- --conventions ./path/to/conventions.md --no-verify
 ```
 
-`--diff`를 생략하면 현재 디렉토리의 `git diff`(unstaged 변경분)를 사용합니다.
+`--diff`를 생략하면 현재 디렉토리의 `git diff`를 사용합니다. **주의: 이건 unstaged 변경분만입니다** — staged된 것도, 커밋된 것도, 브랜치 비교도 아닙니다. 커밋/브랜치 단위로 리뷰하려면 아래 "다른 프로젝트를 리뷰하기"를 참고하세요.
+
+## 다른 프로젝트를 리뷰하기
+
+review-agent는 컨벤션 내용을 전혀 모르고, 넘겨받은 문서를 프롬프트에 그대로 꽂아 넣기만 합니다. 그래서 언어·프로젝트마다 자기 컨벤션 문서를 가리키기만 하면 됩니다 (Java든 TS든 Python이든 동일).
+
+### 1. 실행 방법 — `npm run review`는 review-agent 폴더 안에서만 동작
+
+다른 프로젝트에서 쓰려면 둘 중 하나:
+
+```bash
+# 방법 A: 한 번만 등록해두면 어디서든 review-agent 명령 사용 가능 (권장)
+cd /path/to/review-agent
+npm link
+
+# 이후 어느 프로젝트에서든
+cd /path/to/my-project
+review-agent --conventions ./docs/style-guide.md --dry-run
+
+# 방법 B: 절대경로로 직접 실행
+cd /path/to/my-project
+node /path/to/review-agent/dist/cli/index.js --conventions ./docs/style-guide.md --dry-run
+```
+
+`blast-radius`를 쓸 때 `--repo`를 생략하면 **현재 작업 디렉토리**를 검색 대상으로 삼으므로, 리뷰 대상 프로젝트 안에서 실행하면 따로 지정할 필요가 없습니다.
+
+### 2. 커밋 / 브랜치 단위로 리뷰하기
+
+브랜치를 직접 지정하는 옵션은 **아직 없습니다**. diff를 먼저 뽑아서 `--diff`로 넘기세요:
+
+```bash
+cd /path/to/my-project
+
+# 브랜치 전체 변경분 (main 기준)
+git diff main...HEAD > review.diff
+
+# 특정 커밋 하나
+git show <commit-sha> > review.diff
+
+# staged 변경분 (커밋 직전 검토)
+git diff --staged > review.diff
+
+review-agent --conventions ./docs/style-guide.md --diff review.diff --dry-run
+```
+
+### 3. 컨벤션 문서 위치
+
+컨벤션 문서가 리뷰 대상 repo 밖에 있어도 됩니다 — 경로만 맞으면 절대경로도 동작합니다:
+
+```bash
+review-agent --conventions "/path/to/docs-repo/rules/code-conventions.md" --diff review.diff --dry-run
+```
 
 ## 프롬프트 dry-run (API 비용 없이 프롬프트 확인/튜닝)
 
@@ -49,12 +100,35 @@ npm run review -- --conventions ./path/to/conventions.md --no-verify
 
 ```bash
 npm run review -- --conventions ./path/to/conventions.md --dry-run
+
+# 터미널에서 복사하기 번거로우면 클립보드로 바로 (PowerShell)
+node dist/cli/index.js --conventions docs/conventions.md --diff fixtures/sample.diff --no-verify --dry-run | Set-Clipboard
 ```
 
 dimension마다 재현 정도가 다릅니다:
 - `convention`, `requirement` — 단일 호출이라 완전히 동일하게 재현됨.
 - `blast-radius` — `search_codebase` 도구를 여러 번 호출하는 다중 턴 대화라 **첫 턴만** 미리보기 가능. 실제 대화 흐름은 이 방식으로 못 봄.
 - `verify` — finding을 입력으로 받는 구조라 실제 finding이 없으면 예시(더미) finding으로 형식만 보여줌.
+
+### claude.ai에 붙여넣을 때 실제 API 호출과 다른 점
+
+프롬프트 문구를 다듬는 용도로는 충분하지만, 아래 두 가지는 완전히 동일하지 않습니다:
+
+1. **system 프롬프트가 분리되지 않음** — API는 system을 별도 필드로 보내지만 claude.ai 일반 채팅에는 그런 필드가 없어, system+user가 한 덩어리 사용자 메시지로 들어갑니다. 지시 준수 강도가 미묘하게 다를 수 있습니다.
+2. **출력 스키마 강제가 없음** — 실제 코드는 `output_config.format`으로 `{findings: [{file, line, summary, severity}]}` JSON을 강제하지만, dry-run 출력에는 이 스키마가 포함되지 않습니다. claude.ai에서는 산문으로 답합니다.
+
+## 테스트 픽스처
+
+API 키 없이 동작을 확인할 수 있도록 샘플 한 벌이 들어 있습니다:
+
+- `docs/conventions.md` — review-agent 자체(TypeScript) 기준 컨벤션 초안
+- `fixtures/sample.diff` — 위 컨벤션을 의도적으로 여러 개 위반하는 diff (snake_case 함수명, `any`, 작은따옴표, 세미콜론 누락, 코드 반복 주석, 프롬프트 조립·호출 미분리, import 순서)
+
+```bash
+npm run review -- --conventions docs/conventions.md --diff fixtures/sample.diff --no-verify --dry-run
+```
+
+`docs/conventions.md`는 어디까지나 **review-agent 자신을 리뷰 대상으로 삼을 때 쓰는 샘플**입니다. 다른 프로젝트에 적용할 때는 그 프로젝트의 컨벤션 문서를 가리키세요.
 
 ## GitHub Action
 
@@ -80,7 +154,11 @@ jobs:
           conventions: rules/code-conventions.md
           # requirement: docs/ticket.md   # 선택
           # blast-radius: 'true'          # 선택, 기본 false
+          # plan: 'true'                  # 선택, 기본 false
+          # verify: 'false'               # 선택, 기본 true
 ```
+
+CLI와 달리 diff를 직접 만들 필요가 없습니다 — PR의 전체 변경분을 GitHub API에서 받아옵니다.
 
 `high` 심각도 finding이 하나라도 남으면 이 job이 실패합니다 — 브랜치 보호 규칙에 required check로 걸면 병합을 막는 게이트로 쓸 수 있습니다.
 
