@@ -165,7 +165,23 @@ npm run review -- --conventions docs/conventions.md --diff fixtures/sample.diff 
 
 ## GitHub Action
 
-PR이 열릴 때마다 자동으로 리뷰하고 싶은 다른 repo의 워크플로에서 이렇게 참조합니다:
+### 리뷰 대상 repo에 준비할 것
+
+문서 2개를 **대상 repo 안에** 둡니다. 액션의 `conventions`/`policy` 경로는 체크아웃된 그 repo 기준 상대경로라, repo 밖의 파일은 읽을 수 없습니다.
+
+```
+<대상 repo>/
+├── docs/
+│   ├── code-conventions.md   # 필수 — 그 프로젝트의 코딩 규칙
+│   └── review-policy.md      # 권장 — 검증 범위 정책 (이 repo의 example 복사 후 수정)
+└── .github/workflows/review.yml
+```
+
+요구사항 문서는 준비할 필요 없습니다 — PR 본문을 자동으로 씁니다.
+
+그리고 repo Settings → Secrets에 **`ANTHROPIC_API_KEY`** 등록.
+
+### 워크플로
 
 ```yaml
 # .github/workflows/review.yml (리뷰 대상 repo에)
@@ -184,14 +200,16 @@ jobs:
         env:
           ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
         with:
-          conventions: rules/code-conventions.md
-          # policy: docs/review-policy.md  # 선택, 검증 범위 정책
+          conventions: docs/code-conventions.md
+          policy: docs/review-policy.md
           # requirement: docs/ticket.md    # 선택, 생략하면 PR 본문을 요구사항으로 사용
           # test-coverage: 'true'          # 선택, 기본 false
           # blast-radius: 'true'           # 선택, 기본 false
           # plan: 'true'                   # 선택, 기본 false
           # verify: 'false'                # 선택, 기본 true
 ```
+
+> **여러 repo에 붙일 때 주의** — 문서를 repo마다 복사하는 방식이라, 같은 규칙을 여러 repo가 공유하면 규칙 변경 시 전부 고쳐야 하고 일부만 갱신되면 **repo마다 다른 기준으로 심사되는데 아무 에러도 안 납니다**. 규칙이 실제로 갈리기 시작하면, 규칙 문서를 한 곳에 두고 워크플로에서 `actions/checkout`으로 함께 받아오는 방식으로 바꾸는 걸 검토하세요.
 
 CLI와 두 가지가 다릅니다:
 - **diff를 직접 만들 필요 없음** — PR의 전체 변경분을 GitHub API에서 받아옵니다.
